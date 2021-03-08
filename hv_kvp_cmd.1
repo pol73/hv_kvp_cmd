@@ -1,0 +1,66 @@
+.Dd Mar 08, 2021
+.Dt HV_KVP_CMD 1
+.Os
+.Sh NAME
+.Nm hv_kvp_cmd
+.Nd manipulates with Hyper-V KVP records
+.Sh SYNOPSIS
+.Nm
+.Op Fl vqwr
+.Op Fl d Ar char
+.Op Ar key value | Ar keys
+.Sh DESCRIPTION
+Hyper-V provides a mechanism for exchanging data between a host and a
+virtual machine. Data is presented as key-value pairs (KVP).
+.Nm
+utility allows you to read KVP records from any pools, write to the
+guest pool and delete from the guest pool.
+.Pp
+By default,
+.Nm
+read all or listed
+.Ar keys
+from all pools.
+.Pp
+The options are as follows:
+.Bl -tag -width indent
+.It Fl v
+Verbose mode.
+.It Fl q
+Quote keys and values.
+.It Fl w
+Write pairs
+.Ar key value
+to a guest pool. There may be several pairs.
+.It Fl r
+Remove the listed
+.Ar keys
+from the guest pool.
+.It Fl d Ar char
+Use
+.Ar char
+as the delimiter between key and his value instead of the equal character.
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+Read all keys from all pools.
+.Pp
+.Dl "hv_kvp_cmd"
+.Pp
+Read KVP with keys is the
+.Dq VirtualMachineName ,
+.Dq PhysicalHostNameFullyQualified .
+.Pp
+.Dl "hv_kvp_cmd VirtualMachineName PhysicalHostNameFullyQualified"
+.Pp
+Writes KVP with the UUID of the virtual machine with the
+.Dq HostUUID
+key in the guest pool.
+.Pp
+.Dl "hv_kvp_cmd -w HostUUID `cat /etc/hostid`"
+.Pp
+Remove key
+.Dq HostUUID
+from the guest pool.
+.Pp
+.Dl "hv_kvp_cmd -r HostUUID"
