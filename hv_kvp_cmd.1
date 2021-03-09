@@ -54,13 +54,13 @@ Read KVP with keys is the
 .Dl "hv_kvp_cmd VirtualMachineName PhysicalHostNameFullyQualified"
 .Pp
 Writes KVP with the UUID of the virtual machine with the
-.Dq HostUUID
+.Dq UUID_VM_from_OS
 key in the guest pool.
 .Pp
-.Dl "hv_kvp_cmd -w HostUUID `cat /etc/hostid`"
+.Dl "hv_kvp_cmd -w UUID_VM_from_OS `cat /etc/hostid`"
 .Pp
 Remove key
-.Dq HostUUID
+.Dq UUID_VM_from_OS
 from the guest pool.
 .Pp
-.Dl "hv_kvp_cmd -r HostUUID"
+.Dl "hv_kvp_cmd -r UUID_VM_from_OS"
