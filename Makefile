@@ -1,4 +1,5 @@
 LOCAL?= /usr/local
+MANDIR?= share/man
 
 .ifdef DEBUG
 CFLAGS+= -g -O0 -UNDEBUG
@@ -16,10 +17,13 @@ ${CORE}: ${.TARGET}.c
 all: ${CORE}
 
 install:
-	install ${STRIPPED} -m 555 "${CORE}" ${LOCAL}/bin/
+	install ${STRIPPED} -m 555 "${CORE}" "${LOCAL}/bin/"
+	install -m 444 ${CORE}.1 "${LOCAL}/${MANDIR}/man1/"
 
 deinstall:
-	rm -f "${LOCAL}/bin/${CORE}"
+	rm -f \
+		"${LOCAL}/bin/${CORE}" \
+		"${LOCAL}/${MANDIR}/man1/${CORE}.1"
 
 clean:
 	rm -f ".depend" "${CORE}"
