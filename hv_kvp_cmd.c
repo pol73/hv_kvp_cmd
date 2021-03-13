@@ -77,10 +77,11 @@ typedef enum {
   COMMAND_COUNT
 } COMMAND;
 
-int findKeyArgs(int argc, char *argv[], int optind, char *key) {
+int findKeyArgs(int argc, char *argv[], int optind, int iteratorSize, char *key) {
+  assert(iteratorSize==1 /* key */ || iteratorSize==2 /* pairs: key value */);
   if(optind < argc) {
-    for(int ind = optind; ind < argc; ind++) {
-      if(strlen(argv[ind]) == strlen(key) && strcasestr(argv[ind],key) != NULL) return 1; /* key found (TRUE) */
+    for(; optind<argc; optind+=iteratorSize) {
+      if(strlen(argv[optind]) == strlen(key) && strcasestr(argv[optind],key) != NULL) return optind; /* key found (TRUE) */
     }
     return 0; /* key not found (FALSE) */
   }
@@ -130,6 +131,16 @@ int readKVPrecord(int fd, struct kvp_record_mb *kvpDst, iconv_t codebase, int ve
   return 0; /* FALSE */
 }
 
+void writeKVPrecord(int fd, char *key, char *value, iconv_t codebase, int verbose) {
+  struct kvp_record kvp;
+  if(strlen(key)>0 && strlen(value)>0) { /* Write key or value cannot be empty */
+    memset(&kvp,0,sizeof(kvp));
+    localeConvert(codebase,key,kvp.key,sizeof(kvp.key),verbose);
+    localeConvert(codebase,value,kvp.value,sizeof(kvp.value),verbose);
+    if(write(fd,&kvp,sizeof(kvp)) == -1) err(EX_IOERR,"Cannot write key '%s' to pool",kvp.key);
+  }
+}
+
 int main(int argc, char *argv[]) {
   int verbose = 0; /* option, verbose output, FALSE by default */
   int quoting = 0; /* option, key and value quoted with QUOTECHAR, FALSE by default */
@@ -176,7 +187,7 @@ int main(int argc, char *argv[]) {
       for(int pool=0; pool<HV_KVP_POOL_COUNT; pool++) { /* for each pool */
         fd=poolOpen(pool,O_RDONLY,F_RDLCK);
         while(readKVPrecord(fd,&kvpDst,ctFromKVP,verbose)) { /* for each key */
-          if(findKeyArgs(argc,argv,optind,kvpDst.key)) { /* matching by key */
+          if(findKeyArgs(argc,argv,optind,1,kvpDst.key)) { /* matching by key */
             /* print kvp */
             if(verbose) {
               if(quoting) printf("%c",QUOTECHAR);
@@ -203,18 +214,16 @@ int main(int argc, char *argv[]) {
       if((argc - optind) % 2 != 0) errx(EX_USAGE,"Key and value must be pairs");
       fd=poolOpen(HV_KVP_POOL_GUEST,O_RDWR,F_WRLCK);
       while(readKVPrecord(fd,&kvpDst,ctFromKVP,verbose)) { /* for each key */
-        if(findKeyArgs(argc,argv,optind,kvpDst.key)) { /* matching by key */
-          poolClose(fd);
-          errx(EX_DATAERR,"Key '%s' already exists",kvpDst.key);
+        int findArgC=findKeyArgs(argc,argv,optind,2,kvpDst.key);
+        if(findArgC) { /* overwrite value matched by key */
+          if(lseek(fd,-sizeof(struct kvp_record),SEEK_CUR) == -1) err(EX_IOERR,"Cannot set file descriptor to the previous KVP record");
+          writeKVPrecord(fd,argv[findArgC],argv[findArgC+1],ctToKVP,verbose);
+          if(verbose) warnx("Key '%s' already exists",argv[findArgC]);
+          argv[findArgC][0]=argv[findArgC+1][0]='\0'; /* pair: key, value - erased in argv */
         }
       }
-      for(; optind<argc; optind+=2) { /* for each pair key value */
-        struct kvp_record kvp;
-        memset(&kvp,0,sizeof(kvp));
-        localeConvert(ctToKVP,argv[optind],kvp.key,sizeof(kvp.key),verbose);
-        localeConvert(ctToKVP,argv[optind+1],kvp.value,sizeof(kvp.value),verbose);
-        /* write kvp to pool */
-        if(write(fd,&kvp,sizeof(kvp)) == -1) err(EX_IOERR,"Cannot write key '%s' to pool",kvp.key);
+      for(; optind<argc; optind+=2) { /* for each pair: key value */
+        writeKVPrecord(fd,argv[optind],argv[optind+1],ctToKVP,verbose);
       }
       poolClose(fd);
       break;
@@ -230,7 +239,7 @@ int main(int argc, char *argv[]) {
       memset(buf,0,bufSize);
       if(lseek(fd,0,SEEK_SET) == -1) err(EX_IOERR,"Cannot set file descriptor to start of file");
       while(readKVPrecord(fd,&kvpDst,ctFromKVP,verbose)) { /* for each key */
-        if(findKeyArgs(argc,argv,optind,kvpDst.key)) { /* matching by key */
+        if(findKeyArgs(argc,argv,optind,1,kvpDst.key)) { /* matching by key */
           /* remove key from pool */
           off_t currKVPoffset=lseek(fd,-sizeof(struct kvp_record),SEEK_CUR);
           if(currKVPoffset == -1) err(EX_IOERR,NULL);

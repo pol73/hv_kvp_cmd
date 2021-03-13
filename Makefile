@@ -14,7 +14,9 @@ CORE= hv_kvp_cmd
 ${CORE}: ${.TARGET}.c
 	cc -Wall -Wextra ${CFLAGS} -o ${.TARGET} ${.ALLSRC}
 
-all: ${CORE}
+all: build
+
+build: ${CORE}
 
 install:
 	install ${STRIPPED} -m 555 "${CORE}" "${LOCAL}/bin/"
