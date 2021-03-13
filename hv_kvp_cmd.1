@@ -29,25 +29,25 @@ Verbose mode.
 .It Fl q
 Quote keys and values.
 .It Fl w
-Write pairs
+Writes pairs
 .Ar key value
 to a guest pool. There may be several pairs.
 .It Fl r
-Remove the listed
+Removes the listed
 .Ar keys
 from the guest pool.
 .It Fl d Ar char
-Use
+Uses
 .Ar char
 as the delimiter between key and his value instead of the equal character.
 .Sh EXIT STATUS
 .Ex -std
 .Sh EXAMPLES
-Read all keys from all pools.
+Reads all keys from all pools.
 .Pp
 .Dl "hv_kvp_cmd"
 .Pp
-Read KVP with keys is the
+Reads KVP with keys is the
 .Dq VirtualMachineName ,
 .Dq PhysicalHostNameFullyQualified .
 .Pp
@@ -59,7 +59,7 @@ key in the guest pool.
 .Pp
 .Dl "hv_kvp_cmd -w UUID_VM_from_OS `cat /etc/hostid`"
 .Pp
-Remove key
+Removes key
 .Dq UUID_VM_from_OS
 from the guest pool.
 .Pp

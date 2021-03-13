@@ -1,5 +1,5 @@
 LOCAL?= /usr/local
-MANDIR?= share/man
+MANDIR?= man
 
 .ifdef DEBUG
 CFLAGS+= -g -O0 -UNDEBUG
