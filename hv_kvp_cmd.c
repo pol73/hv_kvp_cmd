@@ -144,6 +144,7 @@ void writeKVPrecord(int fd, char *key, char *value, iconv_t codebase, int verbos
 int main(int argc, char *argv[]) {
   int verbose = 0; /* option, verbose output, FALSE by default */
   int quoting = 0; /* option, key and value quoted with QUOTECHAR, FALSE by default */
+  int valueonly = 0; /* option, value only output, FALSE by default */
   char delimiter = '='; /* delimiter between key and his value */
   COMMAND command = READ; /* read key, by default */
   int fd; /* file descriptor for current working pool */
@@ -160,13 +161,16 @@ int main(int argc, char *argv[]) {
   if(ctToKVP == (iconv_t)(-1)) errx(EX_SOFTWARE,"Cannot create the iconv codetable");
 
   char opt;
-  while((opt = getopt(argc, argv, "vqd:wrh")) != -1) {
+  while((opt = getopt(argc, argv, "vq1d:wrh")) != -1) {
     switch(opt) {
       case 'v': /* verbose mode */
         verbose = 1;
         break;
       case 'q': /* quoting key and value with quotes mark */
         quoting = 1;
+        break;
+      case '1': /* output only value, without key */
+        valueonly = 1;
         break;
       case 'd': /* change delimiter to this char */
         delimiter = (char)optarg[0]; /* TODO: don't work with wchar_t */
@@ -178,7 +182,7 @@ int main(int argc, char *argv[]) {
         command = REMOVE;
         break;
       case 'h':
-      default: errx(EX_USAGE,"usage: %s [-vqwr] [-d char] [key value] or [keys ...]\nlocale(%s), codeset(%s)",strrchr(argv[0],'/')+sizeof(argv[0][0]),locale,codeset);
+      default: errx(EX_USAGE,"usage: %s [-vq1wr] [-d char] [key value] or [keys ...]\nlocale(%s), codeset(%s)",strrchr(argv[0],'/')+sizeof(argv[0][0]),locale,codeset);
     }
   }
 
@@ -189,16 +193,18 @@ int main(int argc, char *argv[]) {
         while(readKVPrecord(fd,&kvpDst,ctFromKVP,verbose)) { /* for each key */
           if(findKeyArgs(argc,argv,optind,1,kvpDst.key)) { /* matching by key */
             /* print kvp */
-            if(verbose) {
+            if(!valueonly) {
+              if(verbose) {
+                if(quoting) printf("%c",QUOTECHAR);
+                printf("%s%s%d",POOL_DIR,POOL_NAME,pool);
+                if(quoting) printf("%c",QUOTECHAR);
+                printf("%c",delimiter);
+              }
               if(quoting) printf("%c",QUOTECHAR);
-              printf("%s%s%d",POOL_DIR,POOL_NAME,pool);
+              printf("%s",kvpDst.key);
               if(quoting) printf("%c",QUOTECHAR);
               printf("%c",delimiter);
             }
-            if(quoting) printf("%c",QUOTECHAR);
-            printf("%s",kvpDst.key);
-            if(quoting) printf("%c",QUOTECHAR);
-            printf("%c",delimiter);
             if(quoting) printf("%c",QUOTECHAR);
             printf("%s",kvpDst.value);
             if(quoting) printf("%c",QUOTECHAR);

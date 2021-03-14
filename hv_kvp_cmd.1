@@ -6,7 +6,7 @@
 .Nd manipulates with Hyper-V KVP records
 .Sh SYNOPSIS
 .Nm
-.Op Fl vqwr
+.Op Fl vq1wr
 .Op Fl d Ar char
 .Op Ar key value | Ar keys
 .Sh DESCRIPTION
@@ -28,6 +28,8 @@ The options are as follows:
 Verbose mode.
 .It Fl q
 Quote keys and values.
+.It Fl 1
+Read the KVP and print the keyless value.
 .It Fl w
 Writes pairs
 .Ar key value
@@ -52,6 +54,12 @@ Reads KVP with keys is the
 .Dq PhysicalHostNameFullyQualified .
 .Pp
 .Dl "hv_kvp_cmd VirtualMachineName PhysicalHostNameFullyQualified"
+.Pp
+Reads KVP with key is the
+.Dq VirtualMachineName
+and output this value to the stdout.
+.Pp
+.Dl "hv_kvp_cmd -1 VirtualMachineName"
 .Pp
 Writes KVP with the UUID of the virtual machine with the
 .Dq UUID_VM_from_OS
