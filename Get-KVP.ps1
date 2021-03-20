@@ -21,7 +21,7 @@ https://docs.microsoft.com/en-us/virtualization/hyper-v-on-windows/reference/int
 [OutputType([PSCustomObject])]
 Param([Parameter(Mandatory, ValueFromPipeline, Position = 0, HelpMessage = 'This is a Hyper-V virtual machyne object.')][Microsoft.HyperV.PowerShell.VirtualMachine]$VM)
 begin {
-  function New-KVP {
+  function Convert-KVP {
     param ([Parameter(Mandatory, ValueFromPipeline, HelpMessage = 'XML with all KVP')][XML]$in)
     begin { $out = [PSCustomObject]@{ PSTypeName = 'Hv.KVP.strings' } }
     process {
@@ -50,8 +50,8 @@ process {
       PSTypeName = 'Hv.KVP'
       VMId       = $vmid
       VMName     = $null -eq $VM.VMName ? '' : $VM.VMName.ToString()
-      Intrinsic  = $cim.GuestIntrinsicExchangeItems | New-KVP
-      Guest      = $cim.GuestExchangeItems | New-KVP
+      Intrinsic  = $cim.GuestIntrinsicExchangeItems | Convert-KVP
+      Guest      = $cim.GuestExchangeItems | Convert-KVP
     }
     $item
   }
