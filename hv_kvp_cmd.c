@@ -35,30 +35,45 @@ SOFTWARE. */
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-#include <machine/param.h>
-#include <dev/hyperv/hyperv.h>
-#include "/usr/src/sys/dev/hyperv/utilities/hv_kvp.h"
 
-/* definitions from file: /usr/src/contrib/hyperv/tools/hv_kvp_daemon.c */
-#ifndef POOL_DIR
-#define POOL_DIR "/var/db/hyperv/pool/"
+#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__bsdi__)
+  #include <machine/param.h>
+  #include <dev/hyperv/hyperv.h>
+  #include "/usr/src/sys/dev/hyperv/utilities/hv_kvp.h"
+  #define FILE_LOCK {0,0,0,lockType,SEEK_SET,0}
+  #define FILE_UNLOCK {0,0,0,F_UNLCK,SEEK_SET,0}
+  #define POOL_COUNT HV_KVP_POOL_COUNT
+  #define POOL_GUEST HV_KVP_POOL_GUEST
+  #ifndef POOL_DIR
+    #define POOL_DIR "/var/db/hyperv/pool/" /* definitions from FreeBSD file: /usr/src/contrib/hyperv/tools/hv_kvp_daemon.c */
+  #endif
+#elif defined(__linux__)
+  #include <linux/hyperv.h>
+  #define FILE_LOCK {lockType,SEEK_SET,0,0,0}
+  #define FILE_UNLOCK {F_UNLCK,SEEK_SET,0,0,0}
+  #define POOL_COUNT KVP_POOL_COUNT
+  #define POOL_GUEST KVP_POOL_GUEST
+  #ifndef POOL_DIR
+    #define POOL_DIR "/var/lib/hyperv/"
+  #endif
+#else
+  #error "Variable for identity OS unrecognised."
 #endif
 
 #ifndef POOL_NAME
-#define POOL_NAME ".kvp_pool_"
+  #define POOL_NAME ".kvp_pool_" /* definitions from FreeBSD file: /usr/src/contrib/hyperv/tools/hv_kvp_daemon.c */
 #endif
-/* end definitions from file: /usr/src/contrib/hyperv/tools/hv_kvp_daemon.c */
 
 #ifndef QUOTECHAR
-#define QUOTECHAR '"'
+  #define QUOTECHAR '"'
 #endif
 
 #ifndef EOL
-#define EOL "\n"
+  #define EOL "\n"
 #endif
 
 #ifndef MULTIBYTE
-#define MULTIBYTE 4
+  #define MULTIBYTE 4
 #endif
 
 struct kvp_record {
@@ -81,7 +96,7 @@ int findKeyArgs(int argc, char *argv[], int optind, int iteratorSize, char *key)
   assert(iteratorSize==1 /* key */ || iteratorSize==2 /* pairs: key value */);
   if(optind < argc) {
     for(; optind<argc; optind+=iteratorSize) {
-      if(strlen(argv[optind]) == strlen(key) && strcasestr(argv[optind],key) != NULL) return optind; /* key found (TRUE) */
+      if(strlen(argv[optind]) == strlen(key) && strcasecmp(argv[optind],key) == 0) return optind; /* key found (TRUE) */
     }
     return 0; /* key not found (FALSE) */
   }
@@ -98,8 +113,8 @@ void localeConvert(iconv_t codetable, char *src, char *dst, size_t dstlen, int v
 int poolOpen(int pool, int flags /* O_RDONLY | O_RDWR */, int lockType /* F_RDLCK | F_WRLCK */) {
   int fd;
   char poolName[PATH_MAX];
-  struct flock fl={0,0,0,lockType,SEEK_SET,0};
-  assert(pool>=0 && pool<HV_KVP_POOL_COUNT);
+  struct flock fl=FILE_LOCK;
+  assert(pool>=0 && pool<POOL_COUNT);
   assert(flags==O_RDONLY || flags==O_RDWR);
   assert(lockType==F_RDLCK || lockType==F_WRLCK);
   if(snprintf(poolName,PATH_MAX-1,"%s%s%d",POOL_DIR,POOL_NAME,pool) < 0) errx(EX_SOFTWARE,"Cannot create pool path variable");
@@ -110,7 +125,7 @@ int poolOpen(int pool, int flags /* O_RDONLY | O_RDWR */, int lockType /* F_RDLC
 }
 
 void poolClose(int fd) {
-  struct flock fl={0,0,0,F_UNLCK,SEEK_SET,0};
+  struct flock fl=FILE_UNLOCK;
   fl.l_pid=getpid();
   if(fcntl(fd,F_SETLK,&fl) == -1) err(EX_IOERR,"Cannot release lock");
   if(close(fd) == -1) err(EX_IOERR,"Cannot close the pool file");
@@ -149,7 +164,6 @@ int main(int argc, char *argv[]) {
   COMMAND command = READ; /* read key, by default */
   int fd; /* file descriptor for current working pool */
   struct kvp_record_mb kvpDst;
-  err_set_file(stderr);
 
   char * locale = setlocale(LC_ALL,getenv("LANG"));
   if(locale == NULL) errx(EX_SOFTWARE,"Cannot get system locale");
@@ -188,7 +202,7 @@ int main(int argc, char *argv[]) {
 
   switch(command) {
     case READ:
-      for(int pool=0; pool<HV_KVP_POOL_COUNT; pool++) { /* for each pool */
+      for(int pool=0; pool<POOL_COUNT; pool++) { /* for each pool */
         fd=poolOpen(pool,O_RDONLY,F_RDLCK);
         while(readKVPrecord(fd,&kvpDst,ctFromKVP,verbose)) { /* for each key */
           if(findKeyArgs(argc,argv,optind,1,kvpDst.key)) { /* matching by key */
@@ -215,10 +229,10 @@ int main(int argc, char *argv[]) {
       }
       break;
 
-    case WRITE: /* only for pool HV_KVP_POOL_GUEST */
+    case WRITE: /* only for pool POOL_GUEST */
       if(optind >= argc) errx(EX_USAGE,"Key and value must be defined in the command line");
       if((argc - optind) % 2 != 0) errx(EX_USAGE,"Key and value must be pairs");
-      fd=poolOpen(HV_KVP_POOL_GUEST,O_RDWR,F_WRLCK);
+      fd=poolOpen(POOL_GUEST,O_RDWR,F_WRLCK);
       while(readKVPrecord(fd,&kvpDst,ctFromKVP,verbose)) { /* for each key */
         int findArgC=findKeyArgs(argc,argv,optind,2,kvpDst.key);
         if(findArgC) { /* overwrite value matched by key */
@@ -234,9 +248,9 @@ int main(int argc, char *argv[]) {
       poolClose(fd);
       break;
 
-    case REMOVE: /* only for pool HV_KVP_POOL_GUEST */
+    case REMOVE: /* only for pool POOL_GUEST */
       if(optind >= argc) errx(EX_USAGE,"There must be at least one key to delete");
-      fd=poolOpen(HV_KVP_POOL_GUEST,O_RDWR,F_WRLCK);
+      fd=poolOpen(POOL_GUEST,O_RDWR,F_WRLCK);
       off_t bufSize=lseek(fd,0,SEEK_END);
       if(bufSize == -1) err(EX_IOERR,"Cannot set file descriptor to end of file");
       if(bufSize % sizeof(struct kvp_record) != 0) errx(EX_DATAERR,"KVP records damaged");
