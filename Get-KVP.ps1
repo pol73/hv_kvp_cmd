@@ -15,6 +15,8 @@ Get-VM | Get-KVP
 https://github.com/pol73/hv_kvp_cmd
 .LINK
 https://docs.microsoft.com/en-us/virtualization/hyper-v-on-windows/reference/integration-services#hyper-v-data-exchange-service-kvp
+.LINK
+https://docs.microsoft.com/en-us/windows/win32/hyperv_v2/msvm-kvpexchangedataitem
 #>
 [CmdletBinding()]
 [Alias('gkvp')]
